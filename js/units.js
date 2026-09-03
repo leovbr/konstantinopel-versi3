@@ -1,847 +1,680 @@
-// =========================================================
-// SIEGE OF CONSTANTINOPLE V3
-// 3D UNITS
-// =========================================================
-
 import * as THREE from "three";
 
-
 export class Units {
+  constructor(world, game) {
+    this.world = world;
+    this.game = game;
+    this.scene = world.getScene();
 
-    constructor(world, game) {
+    this.enemies = [];
+    this.defenses = [];
 
-        this.world = world;
-        this.game = game;
+    this.enemyId = 0;
+    this.defenseId = 0;
+  }
 
-        this.enemies = [];
+  // =========================================================
+  // ENEMY
+  // =========================================================
 
-        this.defenses = [];
+  createEnemy(type, data = {}) {
+    const wave = data.wave ?? this.game.currentWave;
 
+    const enemy = {
+      id: ++this.enemyId,
+
+      type,
+
+      hp: this.getBaseHP(type, wave),
+      maxHP: this.getBaseHP(type, wave),
+
+      speed: this.getSpeed(type),
+      damage: this.getDamage(type),
+
+      x: data.x ?? (Math.random() - 0.5) * 18,
+      z: data.z ?? 18,
+
+      attackTimer: Math.random() * 0.8,
+      walkTime: Math.random() * 10,
+
+      alive: true,
+      attacking: false,
+
+      mesh: null
+    };
+
+    enemy.mesh = this.buildEnemy(enemy);
+
+    this.enemies.push(enemy);
+
+    return enemy;
+  }
+
+  getBaseHP(type, wave) {
+    const scale = 1 + wave * 0.16;
+
+    const base = {
+      soldier: 90,
+      archer: 65,
+      janissary: 150,
+      commander: 700
+    };
+
+    return Math.round((base[type] ?? 90) * scale);
+  }
+
+  getSpeed(type) {
+    switch (type) {
+      case "soldier":
+        return 1.15;
+
+      case "archer":
+        return 0.85;
+
+      case "janissary":
+        return 1.0;
+
+      case "commander":
+        return 0.55;
+
+      default:
+        return 1;
     }
+  }
 
+  getDamage(type) {
+    switch (type) {
+      case "soldier":
+        return 10;
 
-    // =====================================================
-    // CREATE ENEMY
-    // =====================================================
+      case "archer":
+        return 7;
 
-    createEnemy(type, data = {}) {
+      case "janissary":
+        return 18;
 
-        const enemy = {
+      case "commander":
+        return 35;
 
-            id:
-                Date.now() +
-                Math.random(),
-
-            type,
-
-            hp:
-                data.hp ??
-                this.getBaseHP(type),
-
-            maxHP:
-                data.hp ??
-                this.getBaseHP(type),
-
-            speed:
-                this.getSpeed(type),
-
-            damage:
-                this.getDamage(type),
-
-            x:
-                data.x ??
-                (Math.random() - 0.5) * 25,
-
-            z:
-                data.z ??
-                -18 - Math.random() * 12,
-
-            alive: true,
-
-            attackTimer: 0,
-
-            walkTime:
-                Math.random() * 10,
-
-            mesh: null
-
-        };
-
-
-        enemy.mesh =
-            this.buildEnemy(
-                enemy
-            );
-
-
-        this.enemies.push(
-            enemy
-        );
-
-
-        return enemy;
-
+      default:
+        return 10;
     }
+  }
 
+  buildEnemy(enemy) {
+    const group = new THREE.Group();
 
-    // =====================================================
-    // STATS
-    // =====================================================
+    const colors = {
+      soldier: 0x586070,
+      archer: 0x304d38,
+      janissary: 0x5c2020,
+      commander: 0x7a2020
+    };
 
-    getBaseHP(type) {
+    const bodyMaterial = new THREE.MeshStandardMaterial({
+      color: colors[enemy.type] ?? 0x555555,
+      roughness: 0.8
+    });
 
-        switch (type) {
+    const skinMaterial = new THREE.MeshStandardMaterial({
+      color: 0xc98d68,
+      roughness: 0.9
+    });
 
-            case "archer":
-                return 65;
+    // BODY
+    const body = new THREE.Mesh(
+      new THREE.CapsuleGeometry(
+        enemy.type === "commander" ? 0.55 : 0.38,
+        enemy.type === "commander" ? 1.25 : 0.9,
+        6,
+        10
+      ),
+      bodyMaterial
+    );
 
-            case "janissary":
-                return 150;
+    body.position.y = enemy.type === "commander" ? 1.25 : 1.05;
 
-            case "commander":
-                return 700;
+    group.add(body);
 
-            default:
-                return 90;
+    // HEAD
+    const head = new THREE.Mesh(
+      new THREE.SphereGeometry(
+        enemy.type === "commander" ? 0.42 : 0.3,
+        12,
+        12
+      ),
+      skinMaterial
+    );
 
-        }
+    head.position.y = enemy.type === "commander" ? 2.25 : 1.85;
 
-    }
+    group.add(head);
 
-
-    getSpeed(type) {
-
-        switch (type) {
-
-            case "archer":
-                return 0.7;
-
-            case "janissary":
-                return 0.95;
-
-            case "commander":
-                return 0.5;
-
-            default:
-                return 1.1;
-
-        }
-
-    }
-
-
-    getDamage(type) {
-
-        switch (type) {
-
-            case "archer":
-                return 7;
-
-            case "janissary":
-                return 18;
-
-            case "commander":
-                return 35;
-
-            default:
-                return 10;
-
-        }
-
-    }
-
-
-    // =====================================================
-    // BUILD ENEMY
-    // =====================================================
-
-    buildEnemy(enemy) {
-
-        const group =
-            new THREE.Group();
-
-
-        const scale =
+    // HELMET
+    if (enemy.type !== "archer") {
+      const helmet = new THREE.Mesh(
+        new THREE.SphereGeometry(
+          enemy.type === "commander" ? 0.47 : 0.34,
+          12,
+          8,
+          0,
+          Math.PI * 2,
+          0,
+          Math.PI * 0.55
+        ),
+        new THREE.MeshStandardMaterial({
+          color:
             enemy.type === "commander"
-                ? 1.65
-                : enemy.type === "janissary"
-                    ? 1.15
-                    : 1;
-
-
-        group.scale.setScalar(
-            scale
-        );
-
-
-        // -------------------------------------------------
-        // COLORS
-        // -------------------------------------------------
-
-        const bodyColor =
-            this.getBodyColor(
-                enemy.type
-            );
-
-
-        // -------------------------------------------------
-        // BODY
-        // -------------------------------------------------
-
-        const bodyGeometry =
-            new THREE.CapsuleGeometry(
-                0.42,
-                1.05,
-                5,
-                8
-            );
-
-
-        const bodyMaterial =
-            new THREE.MeshStandardMaterial({
-                color: bodyColor,
-                roughness: 0.8
-            });
-
-
-        const body =
-            new THREE.Mesh(
-                bodyGeometry,
-                bodyMaterial
-            );
-
-
-        body.position.y =
-            1.15;
-
-
-        body.castShadow = true;
-
-
-        group.add(
-            body
-        );
-
-
-        // -------------------------------------------------
-        // HEAD
-        // -------------------------------------------------
-
-        const headGeometry =
-            new THREE.SphereGeometry(
-                0.35,
-                12,
-                12
-            );
-
-
-        const headMaterial =
-            new THREE.MeshStandardMaterial({
-                color: 0xb77f60,
-                roughness: 0.9
-            });
-
-
-        const head =
-            new THREE.Mesh(
-                headGeometry,
-                headMaterial
-            );
-
-
-        head.position.y =
-            2.15;
-
-
-        head.castShadow = true;
-
-
-        group.add(
-            head
-        );
-
-
-        // -------------------------------------------------
-        // HELMET
-        // -------------------------------------------------
-
-        if (
-            enemy.type !== "archer"
-        ) {
-
-            const helmetGeometry =
-                new THREE.SphereGeometry(
-                    0.39,
-                    12,
-                    8,
-                    0,
-                    Math.PI * 2,
-                    0,
-                    Math.PI / 2
-                );
-
-
-            const helmetMaterial =
-                new THREE.MeshStandardMaterial({
-                    color:
-                        enemy.type ===
-                        "commander"
-                            ? 0xb99b55
-                            : 0x292c32,
-
-                    metalness: 0.65,
-
-                    roughness: 0.35
-                });
-
-
-            const helmet =
-                new THREE.Mesh(
-                    helmetGeometry,
-                    helmetMaterial
-                );
-
-
-            helmet.position.y =
-                2.27;
-
-
-            group.add(
-                helmet
-            );
-
-        }
-
-
-        // -------------------------------------------------
-        // LEGS
-        // -------------------------------------------------
-
-        const legMaterial =
-            new THREE.MeshStandardMaterial({
-                color: 0x25252a,
-                roughness: 0.9
-            });
-
-
-        const legGeometry =
-            new THREE.CapsuleGeometry(
-                0.12,
-                0.7,
-                4,
-                6
-            );
-
-
-        const leftLeg =
-            new THREE.Mesh(
-                legGeometry,
-                legMaterial
-            );
-
-
-        const rightLeg =
-            new THREE.Mesh(
-                legGeometry,
-                legMaterial
-            );
-
-
-        leftLeg.position.set(
-            -0.18,
-            0.42,
-            0
-        );
-
-
-        rightLeg.position.set(
-            0.18,
-            0.42,
-            0
-        );
-
-
-        leftLeg.castShadow = true;
-        rightLeg.castShadow = true;
-
-
-        group.add(
-            leftLeg,
-            rightLeg
-        );
-
-
-        enemy.leftLeg =
-            leftLeg;
-
-        enemy.rightLeg =
-            rightLeg;
-
-
-        // -------------------------------------------------
-        // WEAPON
-        // -------------------------------------------------
-
-        if (
-            enemy.type === "archer"
-        ) {
-
-            this.addBow(
-                group
-            );
-
-        }
-        else {
-
-            this.addSword(
-                group,
-                enemy.type
-            );
-
-        }
-
-
-        // -------------------------------------------------
-        // COMMANDER CAPE
-        // -------------------------------------------------
-
-        if (
-            enemy.type === "commander"
-        ) {
-
-            const capeGeometry =
-                new THREE.BoxGeometry(
-                    0.8,
-                    1.8,
-                    0.12
-                );
-
-
-            const capeMaterial =
-                new THREE.MeshStandardMaterial({
-                    color: 0x5d1219,
-                    roughness: 0.9
-                });
-
-
-            const cape =
-                new THREE.Mesh(
-                    capeGeometry,
-                    capeMaterial
-                );
-
-
-            cape.position.set(
-                0,
-                1.2,
-                0.35
-            );
-
-
-            cape.rotation.x =
-                -0.12;
-
-
-            group.add(
-                cape
-            );
-
-        }
-
-
-        group.position.set(
-            enemy.x,
-            0,
-            enemy.z
-        );
-
-
-        this.world.scene.add(
-            group
-        );
-
-
-        return group;
-
+              ? 0xb88a32
+              : 0x444b55,
+          metalness: 0.7,
+          roughness: 0.3
+        })
+      );
+
+      helmet.position.y =
+        enemy.type === "commander" ? 2.4 : 2.0;
+
+      group.add(helmet);
     }
 
+    // LEGS
+    const legMaterial = new THREE.MeshStandardMaterial({
+      color: 0x20242b,
+      roughness: 0.9
+    });
 
-    // =====================================================
-    // BODY COLOR
-    // =====================================================
+    const legLeft = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.11, 0.13, 0.75, 8),
+      legMaterial
+    );
 
-    getBodyColor(type) {
+    const legRight = legLeft.clone();
 
-        switch (type) {
+    legLeft.position.set(-0.18, 0.42, 0);
+    legRight.position.set(0.18, 0.42, 0);
 
-            case "archer":
-                return 0x40586b;
+    group.add(legLeft, legRight);
 
-            case "janissary":
-                return 0xc19b58;
+    enemy.legs = [legLeft, legRight];
 
-            case "commander":
-                return 0x771c25;
+    // ARROW/BOW
+    if (enemy.type === "archer") {
+      const bow = new THREE.Mesh(
+        new THREE.TorusGeometry(
+          0.34,
+          0.035,
+          6,
+          12,
+          Math.PI
+        ),
+        new THREE.MeshStandardMaterial({
+          color: 0x6b3f20,
+          roughness: 0.8
+        })
+      );
 
-            default:
-                return 0x6b3433;
+      bow.rotation.y = Math.PI / 2;
+      bow.position.set(0, 1.15, -0.35);
 
-        }
-
+      group.add(bow);
     }
 
-
-    // =====================================================
     // SWORD
-    // =====================================================
-
-    addSword(
-        group,
-        type
+    if (
+      enemy.type === "soldier" ||
+      enemy.type === "janissary" ||
+      enemy.type === "commander"
     ) {
+      const sword = new THREE.Mesh(
+        new THREE.BoxGeometry(
+          enemy.type === "commander" ? 0.09 : 0.06,
+          enemy.type === "commander" ? 0.9 : 0.65,
+          0.03
+        ),
+        new THREE.MeshStandardMaterial({
+          color: 0xc5cbd2,
+          metalness: 0.9,
+          roughness: 0.25
+        })
+      );
 
-        const swordGroup =
-            new THREE.Group();
+      sword.position.set(
+        0.48,
+        1.15,
+        -0.1
+      );
 
+      sword.rotation.z = -0.35;
 
-        const bladeGeometry =
-            new THREE.BoxGeometry(
-                0.12,
-                1.35,
-                0.08
-            );
+      group.add(sword);
 
-
-        const bladeMaterial =
-            new THREE.MeshStandardMaterial({
-                color: 0xbfc6cc,
-                metalness: 0.85,
-                roughness: 0.2
-            });
-
-
-        const blade =
-            new THREE.Mesh(
-                bladeGeometry,
-                bladeMaterial
-            );
-
-
-        blade.position.y =
-            0.65;
-
-
-        const handleGeometry =
-            new THREE.CylinderGeometry(
-                0.07,
-                0.07,
-                0.45,
-                8
-            );
-
-
-        const handleMaterial =
-            new THREE.MeshStandardMaterial({
-                color: 0x4b2b1b
-            });
-
-
-        const handle =
-            new THREE.Mesh(
-                handleGeometry,
-                handleMaterial
-            );
-
-
-        handle.position.y =
-            -0.2;
-
-
-        swordGroup.add(
-            blade,
-            handle
-        );
-
-
-        swordGroup.position.set(
-            0.55,
-            1.1,
-            0
-        );
-
-
-        swordGroup.rotation.z =
-            -0.5;
-
-
-        group.add(
-            swordGroup
-        );
-
+      enemy.weapon = sword;
     }
 
+    // COMMANDER CAPE
+    if (enemy.type === "commander") {
+      const cape = new THREE.Mesh(
+        new THREE.PlaneGeometry(0.95, 1.45),
+        new THREE.MeshStandardMaterial({
+          color: 0x4a0710,
+          side: THREE.DoubleSide,
+          roughness: 0.9
+        })
+      );
 
-    // =====================================================
-    // BOW
-    // =====================================================
+      cape.position.set(0, 1.35, 0.38);
+      cape.rotation.x = 0.15;
 
-    addBow(group) {
-
-        const bow =
-            new THREE.Group();
-
-
-        const bowGeometry =
-            new THREE.TorusGeometry(
-                0.55,
-                0.055,
-                6,
-                18,
-                Math.PI
-            );
-
-
-        const bowMaterial =
-            new THREE.MeshStandardMaterial({
-                color: 0x8d5d2d,
-                roughness: 0.8
-            });
-
-
-        const bowMesh =
-            new THREE.Mesh(
-                bowGeometry,
-                bowMaterial
-            );
-
-
-        bowMesh.rotation.z =
-            Math.PI / 2;
-
-
-        bow.add(
-            bowMesh
-        );
-
-
-        bow.position.set(
-            0.5,
-            1.35,
-            -0.1
-        );
-
-
-        group.add(
-            bow
-        );
-
+      group.add(cape);
     }
 
-
-    // =====================================================
-    // UPDATE
-    // =====================================================
-
-    update(delta) {
-
-        this.enemies.forEach(
-            enemy => {
-
-                if (
-                    !enemy.alive ||
-                    !enemy.mesh
-                ) {
-                    return;
-                }
-
-
-                this.updateEnemy(
-                    enemy,
-                    delta
-                );
-
-            }
-        );
-
+    // COMMANDER SCALE
+    if (enemy.type === "commander") {
+      group.scale.setScalar(1.35);
     }
 
+    group.position.set(
+      enemy.x,
+      0,
+      enemy.z
+    );
 
-    // =====================================================
-    // ENEMY MOVEMENT
-    // =====================================================
+    this.scene.add(group);
 
-    updateEnemy(
-        enemy,
-        delta
-    ) {
+    return group;
+  }
 
-        const mesh =
-            enemy.mesh;
+  // =========================================================
+  // UPDATE ENEMIES
+  // =========================================================
 
+  update(delta) {
+    this.updateEnemies(delta);
+    this.updateDefenses(delta);
+  }
 
-        // Target wall
+  updateEnemies(delta) {
+    for (const enemy of this.enemies) {
+      if (!enemy.alive || !enemy.mesh) continue;
 
-        const targetZ =
-            1.0;
+      this.updateEnemy(enemy, delta);
+    }
+  }
 
+  updateEnemy(enemy, delta) {
+    const targetZ = 2.0;
 
-        const distance =
-            targetZ -
-            mesh.position.z;
+    const distance = enemy.mesh.position.z - targetZ;
 
+    enemy.walkTime += delta;
 
-        if (
-            distance > 1.5
-        ) {
+    // MOVE
+    if (distance > 0.7) {
+      enemy.attacking = false;
 
-            mesh.position.z +=
-                enemy.speed *
-                delta;
+      enemy.mesh.position.z -=
+        enemy.speed * delta;
 
+      // WALK ANIMATION
+      if (enemy.legs) {
+        enemy.legs[0].rotation.x =
+          Math.sin(enemy.walkTime * 9) * 0.45;
 
-            // Walking animation
+        enemy.legs[1].rotation.x =
+          Math.sin(enemy.walkTime * 9 + Math.PI) * 0.45;
+      }
+    } else {
+      enemy.attacking = true;
 
-            enemy.walkTime +=
-                delta * 8;
+      enemy.attackTimer -= delta;
 
+      if (enemy.attackTimer <= 0) {
+        enemy.attackTimer = 1.4;
 
-            if (
-                enemy.leftLeg &&
-                enemy.rightLeg
-            ) {
+        this.game.damageCity(
+          enemy.damage
+        );
 
-                enemy.leftLeg.rotation.x =
-                    Math.sin(
-                        enemy.walkTime
-                    ) * 0.55;
+        this.attackAnimation(enemy);
+      }
+    }
 
+    // SMALL BODY BOB
+    enemy.mesh.position.y =
+      Math.abs(
+        Math.sin(enemy.walkTime * 6)
+      ) * 0.025;
+  }
 
-                enemy.rightLeg.rotation.x =
-                    Math.sin(
-                        enemy.walkTime +
-                        Math.PI
-                    ) * 0.55;
+  attackAnimation(enemy) {
+    if (!enemy.mesh) return;
 
-            }
+    const original = enemy.mesh.rotation.x;
 
+    enemy.mesh.rotation.x = -0.25;
+
+    setTimeout(() => {
+      if (enemy.mesh) {
+        enemy.mesh.rotation.x = original;
+      }
+    }, 140);
+  }
+
+  // =========================================================
+  // DEFENSES
+  // =========================================================
+
+  createDefense(type, level = 1) {
+    const defense = {
+      id: ++this.defenseId,
+
+      type,
+
+      level,
+
+      damage:
+        type === "cannon"
+          ? 90 + level * 25
+          : 35 + level * 12,
+
+      range:
+        type === "cannon"
+          ? 25
+          : 22,
+
+      fireRate:
+        type === "cannon"
+          ? 2.8
+          : 1.2,
+
+      cooldown: 0,
+
+      alive: true,
+
+      mesh: null,
+
+      position: null
+    };
+
+    const position = this.getDefensePosition(
+      type,
+      this.defenses.length
+    );
+
+    defense.position = position;
+
+    defense.mesh =
+      this.buildDefense(defense);
+
+    this.defenses.push(defense);
+
+    return defense;
+  }
+
+  getDefensePosition(type, index) {
+    const side = index % 2 === 0 ? -1 : 1;
+
+    const row =
+      Math.floor(index / 2);
+
+    return new THREE.Vector3(
+      side * (7.2 + row * 1.2),
+      5.2,
+      0.4
+    );
+  }
+
+  buildDefense(defense) {
+    const group = new THREE.Group();
+
+    const isCannon =
+      defense.type === "cannon";
+
+    // BASE
+    const base = new THREE.Mesh(
+      new THREE.CylinderGeometry(
+        isCannon ? 0.65 : 0.45,
+        isCannon ? 0.8 : 0.6,
+        0.35,
+        10
+      ),
+      new THREE.MeshStandardMaterial({
+        color: isCannon ? 0x454545 : 0x6b4324,
+        metalness: isCannon ? 0.65 : 0,
+        roughness: 0.7
+      })
+    );
+
+    group.add(base);
+
+    // TOWER
+    const tower = new THREE.Mesh(
+      new THREE.BoxGeometry(
+        isCannon ? 0.8 : 0.55,
+        isCannon ? 0.7 : 0.9,
+        isCannon ? 0.8 : 0.55
+      ),
+      new THREE.MeshStandardMaterial({
+        color: 0x343942,
+        roughness: 0.75
+      })
+    );
+
+    tower.position.y =
+      isCannon ? 0.45 : 0.6;
+
+    group.add(tower);
+
+    // BARREL / BOW
+    if (isCannon) {
+      const barrel = new THREE.Mesh(
+        new THREE.CylinderGeometry(
+          0.16,
+          0.22,
+          1.25,
+          10
+        ),
+        new THREE.MeshStandardMaterial({
+          color: 0x1d2024,
+          metalness: 0.85,
+          roughness: 0.3
+        })
+      );
+
+      barrel.rotation.z =
+        Math.PI / 2;
+
+      barrel.position.set(
+        0,
+        0.7,
+        -0.65
+      );
+
+      group.add(barrel);
+
+      defense.barrel = barrel;
+    } else {
+      const archerBody =
+        new THREE.Mesh(
+          new THREE.CapsuleGeometry(
+            0.18,
+            0.45,
+            5,
+            8
+          ),
+          new THREE.MeshStandardMaterial({
+            color: 0x5a704e
+          })
+        );
+
+      archerBody.position.y = 1.2;
+
+      group.add(archerBody);
+
+      defense.barrel = archerBody;
+    }
+
+    group.position.copy(
+      defense.position
+    );
+
+    this.scene.add(group);
+
+    return group;
+  }
+
+  updateDefenses(delta) {
+    for (const defense of this.defenses) {
+      if (!defense.alive) continue;
+
+      defense.cooldown -= delta;
+
+      const target =
+        this.findTarget(defense);
+
+      if (!target) continue;
+
+      // AIM
+      this.aimDefense(
+        defense,
+        target
+      );
+
+      // FIRE
+      if (defense.cooldown <= 0) {
+        defense.cooldown =
+          defense.fireRate;
+
+        this.fireDefense(
+          defense,
+          target
+        );
+      }
+    }
+  }
+
+  findTarget(defense) {
+    let closest = null;
+    let closestDistance = Infinity;
+
+    for (const enemy of this.enemies) {
+      if (!enemy.alive || !enemy.mesh) {
+        continue;
+      }
+
+      const distance =
+        defense.position.distanceTo(
+          enemy.mesh.position
+        );
+
+      if (
+        distance <= defense.range &&
+        distance < closestDistance
+      ) {
+        closest = enemy;
+        closestDistance = distance;
+      }
+    }
+
+    return closest;
+  }
+
+  aimDefense(defense, target) {
+    if (!defense.mesh || !target.mesh) {
+      return;
+    }
+
+    const targetPosition =
+      target.mesh.position.clone();
+
+    targetPosition.y += 1;
+
+    defense.mesh.lookAt(
+      targetPosition
+    );
+  }
+
+  fireDefense(defense, target) {
+    if (!target || !target.alive) {
+      return;
+    }
+
+    const start =
+      defense.position.clone();
+
+    start.y +=
+      defense.type === "cannon"
+        ? 0.8
+        : 1.3;
+
+    if (defense.type === "cannon") {
+      this.game.combat.fireCannon(
+        start,
+        target,
+        defense.damage
+      );
+    } else {
+      this.game.combat.fireArrow(
+        start,
+        target,
+        defense.damage
+      );
+    }
+
+    // recoil
+    if (defense.barrel) {
+      defense.barrel.position.z += 0.12;
+
+      setTimeout(() => {
+        if (defense.barrel) {
+          defense.barrel.position.z -= 0.12;
         }
-        else {
+      }, 80);
+    }
+  }
 
-            enemy.attackTimer +=
-                delta;
+  // =========================================================
+  // REMOVE / CLEAR
+  // =========================================================
 
+  removeEnemy(enemy) {
+    if (!enemy) return;
 
-            if (
-                enemy.attackTimer >
-                1.4
-            ) {
+    enemy.alive = false;
 
-                enemy.attackTimer = 0;
-
-
-                this.game.damageCity(
-                    enemy.damage
-                );
-
-
-                this.attackAnimation(
-                    enemy
-                );
-
-            }
-
-        }
-
+    if (enemy.mesh?.parent) {
+      enemy.mesh.parent.remove(
+        enemy.mesh
+      );
     }
 
+    const index =
+      this.enemies.indexOf(enemy);
 
-    // =====================================================
-    // ATTACK ANIMATION
-    // =====================================================
+    if (index !== -1) {
+      this.enemies.splice(index, 1);
+    }
+  }
 
-    attackAnimation(enemy) {
-
-        const mesh =
-            enemy.mesh;
-
-
-        mesh.rotation.y =
-            -0.25;
-
-
-        setTimeout(
-            () => {
-
-                if (
-                    mesh
-                ) {
-
-                    mesh.rotation.y =
-                        0;
-
-                }
-
-            },
-            180
+  clear() {
+    for (const enemy of this.enemies) {
+      if (enemy.mesh?.parent) {
+        enemy.mesh.parent.remove(
+          enemy.mesh
         );
-
+      }
     }
 
-
-    // =====================================================
-    // REMOVE ENEMY
-    // =====================================================
-
-    removeEnemy(enemy) {
-
-        if (
-            !enemy
-        ) {
-            return;
-        }
-
-
-        enemy.alive = false;
-
-
-        if (
-            enemy.mesh
-        ) {
-
-            this.world.scene.remove(
-                enemy.mesh
-            );
-
-        }
-
-    }
-
-
-    // =====================================================
-    // CLEAR
-    // =====================================================
-
-    clear() {
-
-        this.enemies.forEach(
-            enemy => {
-
-                if (
-                    enemy.mesh
-                ) {
-
-                    this.world.scene.remove(
-                        enemy.mesh
-                    );
-
-                }
-
-            }
+    for (const defense of this.defenses) {
+      if (defense.mesh?.parent) {
+        defense.mesh.parent.remove(
+          defense.mesh
         );
-
-
-        this.enemies = [];
-
+      }
     }
 
+    this.enemies.length = 0;
+    this.defenses.length = 0;
+  }
 }
