@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width,
+                 initial-scale=1.0,
+                 maximum-scale=1.0,
+                 user-scalable=no"
+    >
+
+    <title>Siege of Constantinople — V3</title>
+
+    <link rel="stylesheet" href="css/style.css">
+
+    <!-- Three.js -->
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js"
+        }
+    }
+    </script>
+</head>
+
+<body>
+
+<!-- =========================================================
+     LOADING SCREEN
+========================================================= -->
+
+<div id="loadingScreen" class="screen active">
+
+    <div class="loading-content">
+
+        <div class="loading-symbol">⚔</div>
+
+        <div class="loading-small">
+            1453 • THE FINAL SIEGE
+        </div>
+
+        <h1>
+            SIEGE OF<br>
+            CONSTANTINOPLE
+        </h1>
+
+        <div class="loading-line">
+            <div id="loadingBar"></div>
+        </div>
+
+        <div id="loadingText">
+            INITIALIZING BATTLEFIELD...
+        </div>
+
+    </div>
+
+</div>
+
+
+<!-- =========================================================
+     START SCREEN
+========================================================= -->
+
+<div id="startScreen" class="screen">
+
+    <div class="start-content">
+
+        <div class="start-era">
+            MAY 29 • 1453
+        </div>
+
+        <h1>
+            SIEGE OF<br>
+            CONSTANTINOPLE
+        </h1>
+
+        <p>
+            The final walls of the Byzantine Empire<br>
+            stand between civilization and conquest.
+        </p>
+
+        <button id="startButton" class="main-button">
+            ⚔ BEGIN THE SIEGE
+        </button>
+
+        <div class="edition">
+            TRUE 3D EDITION • V3
+        </div>
+
+    </div>
+
+</div>
+
+
+<!-- =========================================================
+     GAME
+========================================================= -->
+
+<div id="gameScreen">
+
+    <!-- THREE.JS CANVAS -->
+    <div id="gameCanvas"></div>
+
+
+    <!-- =====================================================
+         TOP HUD
+    ====================================================== -->
+
+    <header id="hud">
+
+        <div class="hud-section left">
+
+            <div class="hud-stat">
+                <span class="hud-label">WAVE</span>
+                <strong id="waveDisplay">1</strong>
+            </div>
+
+            <div class="hud-stat">
+                <span class="hud-label">GOLD</span>
+                <strong id="goldDisplay">500</strong>
+            </div>
+
+            <div class="hud-stat">
+                <span class="hud-label">KILLS</span>
+                <strong id="killDisplay">0</strong>
+            </div>
+
+        </div>
+
+
+        <!-- CITY -->
+
+        <div class="city-hud">
+
+            <div class="city-title">
+                CONSTANTINOPLE
+            </div>
+
+            <div class="city-health">
+
+                <div class="health-track">
+                    <div
+                        id="cityHpBar"
+                        class="health-fill">
+                    </div>
+                </div>
+
+                <div id="cityHpText">
+                    1000 / 1000
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <!-- RIGHT -->
+
+        <div class="hud-section right">
+
+            <div class="hud-stat">
+                <span class="hud-label">SCORE</span>
+                <strong id="scoreDisplay">0</strong>
+            </div>
+
+            <div class="hud-stat">
+                <span class="hud-label">SUPPLIES</span>
+                <strong id="suppliesDisplay">60</strong>
+            </div>
+
+        </div>
+
+    </header>
+
+
+    <!-- =====================================================
+         WAVE MESSAGE
+    ====================================================== -->
+
+    <div id="waveAnnouncement">
+
+        <div class="announcement-small">
+            THE ENEMY APPROACHES
+        </div>
+
+        <div id="announcementTitle">
+            WAVE I
+        </div>
+
+        <div id="announcementSubtitle">
+            DEFEND THE WALLS
+        </div>
+
+    </div>
+
+
+    <!-- =====================================================
+         BOTTOM CONTROL PANEL
+    ====================================================== -->
+
+    <section id="controlPanel">
+
+        <div id="selectedInfo">
+
+            <div id="selectionTitle">
+                DEFENSE COMMAND
+            </div>
+
+            <div id="selectionDescription">
+                Command the defenses of Constantinople.
+            </div>
+
+        </div>
+
+
+        <div class="action-buttons">
+
+            <!-- ARCHER -->
+
+            <button
+                id="archerButton"
+                class="action-button">
+
+                <div class="action-icon">
+                    🏹
+                </div>
+
+                <div class="action-text">
+                    <strong>ARCHER</strong>
+                    <small>150 GOLD</small>
+                </div>
+
+            </button>
+
+
+            <!-- CANNON -->
+
+            <button
+                id="cannonButton"
+                class="action-button">
+
+                <div class="action-icon">
+                    💣
+                </div>
+
+                <div class="action-text">
+                    <strong>CANNON</strong>
+                    <small>250 GOLD</small>
+                </div>
+
+            </button>
+
+
+            <!-- FIRE RAIN -->
+
+            <button
+                id="fireRainButton"
+                class="action-button fire">
+
+                <div class="action-icon">
+                    🔥
+                </div>
+
+                <div class="action-text">
+                    <strong>FIRE RAIN</strong>
+                    <small id="fireRainStatus">
+                        READY
+                    </small>
+                </div>
+
+            </button>
+
+
+            <!-- UPGRADE -->
+
+            <button
+                id="upgradeButton"
+                class="action-button">
+
+                <div class="action-icon">
+                    ⚡
+                </div>
+
+                <div class="action-text">
+                    <strong>UPGRADE</strong>
+                    <small>
+                        <span id="upgradeCost">100</span>
+                        GOLD
+                    </small>
+                </div>
+
+            </button>
+
+
+            <!-- REPAIR -->
+
+            <button
+                id="repairButton"
+                class="action-button">
+
+                <div class="action-icon">
+                    🛡️
+                </div>
+
+                <div class="action-text">
+                    <strong>REPAIR</strong>
+                    <small>40 GOLD</small>
+                </div>
+
+            </button>
+
+        </div>
+
+
+        <!-- WAVE CONTROL -->
+
+        <div class="wave-control">
+
+            <button
+                id="startWaveButton"
+                class="wave-button">
+
+                ⚔ START WAVE
+
+            </button>
+
+        </div>
+
+    </section>
+
+
+    <!-- =====================================================
+         CROSSHAIR
+    ====================================================== -->
+
+    <div id="crosshair">
+
+        <div class="crosshair-horizontal"></div>
+        <div class="crosshair-vertical"></div>
+
+        <div class="crosshair-center"></div>
+
+    </div>
+
+
+    <!-- =====================================================
+         DAMAGE / FLOATING TEXT
+    ====================================================== -->
+
+    <div id="damageLayer"></div>
+
+
+    <!-- =====================================================
+         NOTIFICATION
+    ====================================================== -->
+
+    <div id="notification">
+        <span id="notificationText"></span>
+    </div>
+
+
+    <!-- =====================================================
+         PAUSE
+    ====================================================== -->
+
+    <div id="pauseOverlay">
+
+        <div class="pause-box">
+
+            <div class="pause-title">
+                BATTLE PAUSED
+            </div>
+
+            <div class="pause-subtitle">
+                PRESS P TO RESUME
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+<!-- =========================================================
+     GAME OVER
+========================================================= -->
+
+<div id="gameOverScreen" class="screen">
+
+    <div class="result-content">
+
+        <div class="result-small">
+            THE CITY HAS FALLEN
+        </div>
+
+        <h2>
+            CONSTANTINOPLE<br>
+            HAS FALLEN
+        </h2>
+
+        <div class="result-stats">
+
+            <div>
+                <span>WAVE</span>
+                <strong id="finalWave">0</strong>
+            </div>
+
+            <div>
+                <span>KILLS</span>
+                <strong id="finalKills">0</strong>
+            </div>
+
+            <div>
+                <span>SCORE</span>
+                <strong id="finalScore">0</strong>
+            </div>
+
+        </div>
+
+        <button
+            id="restartButton"
+            class="main-button">
+
+            ⚔ RETURN TO BATTLE
+
+        </button>
+
+    </div>
+
+</div>
+
+
+<!-- =========================================================
+     VICTORY
+========================================================= -->
+
+<div id="victoryScreen" class="screen">
+
+    <div class="result-content victory">
+
+        <div class="result-small">
+            THE SIEGE IS OVER
+        </div>
+
+        <h2>
+            CONSTANTINOPLE<br>
+            SURVIVES
+        </h2>
+
+        <p>
+            Against overwhelming odds,
+            the city still stands.
+        </p>
+
+        <div class="result-stats">
+
+            <div>
+                <span>WAVE</span>
+                <strong id="victoryWave">0</strong>
+            </div>
+
+            <div>
+                <span>KILLS</span>
+                <strong id="victoryKills">0</strong>
+            </div>
+
+            <div>
+                <span>SCORE</span>
+                <strong id="victoryScore">0</strong>
+            </div>
+
+        </div>
+
+        <button
+            id="victoryRestartButton"
+            class="main-button">
+
+            ⚔ PLAY AGAIN
+
+        </button>
+
+    </div>
+
+</div>
+
+
+<!-- =========================================================
+     THREE.JS GAME ENTRY
+========================================================= -->
+
+<script type="module" src="js/main.js"></script>
+
+</body>
+</html>
