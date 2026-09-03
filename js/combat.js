@@ -1,656 +1,415 @@
-// =========================================================
-// SIEGE OF CONSTANTINOPLE V3
-// COMBAT SYSTEM
-// =========================================================
-
 import * as THREE from "three";
 
-
 export class Combat {
+  constructor(world, game, units) {
+    this.world = world;
+    this.game = game;
+    this.units = units;
 
-    constructor(
-        world,
-        game,
-        units
+    this.scene = world.getScene();
+
+    this.projectiles = [];
+  }
+
+  // =========================================================
+  // UPDATE
+  // =========================================================
+
+  update(delta) {
+    for (
+      let i = this.projectiles.length - 1;
+      i >= 0;
+      i--
     ) {
+      const projectile =
+        this.projectiles[i];
 
-        this.world = world;
-        this.game = game;
-        this.units = units;
-
-        this.projectiles = [];
-
-    }
-
-
-    // =====================================================
-    // UPDATE
-    // =====================================================
-
-    update(delta) {
-
-        this.projectiles.forEach(
-            projectile => {
-
-                if (
-                    !projectile.active
-                ) {
-                    return;
-                }
-
-
-                this.updateProjectile(
-                    projectile,
-                    delta
-                );
-
-            }
-        );
-
-
-        this.projectiles =
-            this.projectiles.filter(
-                projectile =>
-                    projectile.active
-            );
-
-    }
-
-
-    // =====================================================
-    // FIRE ARROW
-    // =====================================================
-
-    fireArrow(
-        start,
-        target,
-        damage = 35
-    ) {
-
-        const projectile =
-            this.createProjectile(
-                start,
-                target,
-                damage,
-                "arrow"
-            );
-
-
-        this.projectiles.push(
-            projectile
-        );
-
-    }
-
-
-    // =====================================================
-    // FIRE CANNON
-    // =====================================================
-
-    fireCannon(
-        start,
-        target,
-        damage = 100
-    ) {
-
-        const projectile =
-            this.createProjectile(
-                start,
-                target,
-                damage,
-                "cannon"
-            );
-
-
-        this.projectiles.push(
-            projectile
-        );
-
-    }
-
-
-    // =====================================================
-    // CREATE PROJECTILE
-    // =====================================================
-
-    createProjectile(
-        start,
-        target,
-        damage,
-        type
-    ) {
-
-        const mesh =
-            this.createProjectileMesh(
-                type
-            );
-
-
-        mesh.position.copy(
-            start
-        );
-
-
-        this.world.scene.add(
-            mesh
-        );
-
-
-        return {
-
-            mesh,
-
-            target,
-
-            damage,
-
-            type,
-
-            active: true,
-
-            progress: 0,
-
-            duration:
-                type === "cannon"
-                    ? 0.45
-                    : 0.65,
-
-            start:
-                start.clone()
-
-        };
-
-    }
-
-
-    // =====================================================
-    // PROJECTILE MESH
-    // =====================================================
-
-    createProjectileMesh(
-        type
-    ) {
-
-        if (
-            type === "arrow"
-        ) {
-
-            const group =
-                new THREE.Group();
-
-
-            const shaftGeometry =
-                new THREE.CylinderGeometry(
-                    0.035,
-                    0.035,
-                    1.0,
-                    6
-                );
-
-
-            const shaftMaterial =
-                new THREE.MeshStandardMaterial({
-                    color: 0x8a5c2f
-                });
-
-
-            const shaft =
-                new THREE.Mesh(
-                    shaftGeometry,
-                    shaftMaterial
-                );
-
-
-            shaft.rotation.z =
-                Math.PI / 2;
-
-
-            group.add(
-                shaft
-            );
-
-
-            const headGeometry =
-                new THREE.ConeGeometry(
-                    0.09,
-                    0.25,
-                    6
-                );
-
-
-            const headMaterial =
-                new THREE.MeshStandardMaterial({
-                    color: 0xbcc5cc,
-                    metalness: 0.8,
-                    roughness: 0.2
-                });
-
-
-            const head =
-                new THREE.Mesh(
-                    headGeometry,
-                    headMaterial
-                );
-
-
-            head.rotation.z =
-                -Math.PI / 2;
-
-
-            head.position.x =
-                0.55;
-
-
-            group.add(
-                head
-            );
-
-
-            return group;
-
-        }
-
-
-        // Cannonball
-
-        const geometry =
-            new THREE.SphereGeometry(
-                0.22,
-                12,
-                12
-            );
-
-
-        const material =
-            new THREE.MeshStandardMaterial({
-                color: 0x171717,
-                metalness: 0.65,
-                roughness: 0.4
-            });
-
-
-        return new THREE.Mesh(
-            geometry,
-            material
-        );
-
-    }
-
-
-    // =====================================================
-    // UPDATE PROJECTILE
-    // =====================================================
-
-    updateProjectile(
+      this.updateProjectile(
         projectile,
         delta
-    ) {
+      );
+    }
+  }
 
-        if (
-            !projectile.target ||
-            !projectile.target.alive
-        ) {
+  // =========================================================
+  // ARROW
+  // =========================================================
 
-            this.destroyProjectile(
-                projectile
-            );
+  fireArrow(
+    start,
+    target,
+    damage
+  ) {
+    if (!target?.alive) return;
 
-            return;
+    const projectile =
+      this.createProjectile(
+        "arrow",
+        start,
+        target,
+        damage
+      );
 
-        }
+    this.projectiles.push(
+      projectile
+    );
+  }
 
+  // =========================================================
+  // CANNON
+  // =========================================================
 
-        projectile.progress +=
-            delta /
-            projectile.duration;
+  fireCannon(
+    start,
+    target,
+    damage
+  ) {
+    if (!target?.alive) return;
 
+    const projectile =
+      this.createProjectile(
+        "cannon",
+        start,
+        target,
+        damage
+      );
 
-        const t =
-            Math.min(
-                projectile.progress,
-                1
-            );
+    this.projectiles.push(
+      projectile
+    );
+  }
 
+  // =========================================================
+  // CREATE PROJECTILE
+  // =========================================================
 
-        const targetMesh =
-            projectile.target.mesh;
+  createProjectile(
+    type,
+    start,
+    target,
+    damage
+  ) {
+    const mesh =
+      this.createProjectileMesh(type);
 
+    mesh.position.copy(start);
 
-        if (!targetMesh) {
+    this.scene.add(mesh);
 
-            this.destroyProjectile(
-                projectile
-            );
+    return {
+      type,
 
-            return;
+      mesh,
 
-        }
+      target,
 
+      damage,
 
-        const start =
-            projectile.start;
+      start:
+        start.clone(),
 
+      elapsed: 0,
 
-        const end =
-            targetMesh.position.clone();
+      duration:
+        type === "cannon"
+          ? 0.65
+          : 0.5,
 
+      arc:
+        type === "cannon"
+          ? 3.5
+          : 1.8
+    };
+  }
 
-        end.y +=
-            projectile.type ===
-            "cannon"
-                ? 1
-                : 1.4;
+  createProjectileMesh(type) {
+    if (type === "arrow") {
+      const group =
+        new THREE.Group();
 
-
-        // -------------------------------------------------
-        // ARC
-        // -------------------------------------------------
-
-        const current =
-            start.clone().lerp(
-                end,
-                t
-            );
-
-
-        const arc =
-            Math.sin(
-                t * Math.PI
-            ) *
-            (
-                projectile.type ===
-                "cannon"
-                    ? 3
-                    : 1.8
-            );
-
-
-        current.y +=
-            arc;
-
-
-        projectile.mesh.position.copy(
-            current
+      const shaft =
+        new THREE.Mesh(
+          new THREE.CylinderGeometry(
+            0.025,
+            0.025,
+            0.65,
+            6
+          ),
+          new THREE.MeshStandardMaterial({
+            color: 0x8a5a2b
+          })
         );
 
+      shaft.rotation.z =
+        Math.PI / 2;
 
-        // -------------------------------------------------
-        // ROTATE TOWARD TARGET
-        // -------------------------------------------------
+      group.add(shaft);
 
-        if (
-            t < 0.98
-        ) {
+      const tip =
+        new THREE.Mesh(
+          new THREE.ConeGeometry(
+            0.08,
+            0.2,
+            6
+          ),
+          new THREE.MeshStandardMaterial({
+            color: 0xbfc5cc,
+            metalness: 0.8
+          })
+        );
 
-            projectile.mesh.lookAt(
-                end
-            );
+      tip.rotation.z =
+        -Math.PI / 2;
 
-        }
+      tip.position.x = 0.4;
 
+      group.add(tip);
 
-        // -------------------------------------------------
-        // IMPACT
-        // -------------------------------------------------
-
-        if (
-            t >= 1
-        ) {
-
-            this.impact(
-                projectile
-            );
-
-        }
-
+      return group;
     }
 
+    // CANNON BALL
+    return new THREE.Mesh(
+      new THREE.SphereGeometry(
+        0.16,
+        10,
+        10
+      ),
+      new THREE.MeshStandardMaterial({
+        color: 0x161616,
+        metalness: 0.8,
+        roughness: 0.3
+      })
+    );
+  }
 
-    // =====================================================
-    // IMPACT
-    // =====================================================
+  // =========================================================
+  // PROJECTILE MOVEMENT
+  // =========================================================
 
-    impact(
+  updateProjectile(
+    projectile,
+    delta
+  ) {
+    if (
+      !projectile.mesh ||
+      !projectile.target?.alive
+    ) {
+      this.destroyProjectile(
         projectile
-    ) {
+      );
 
-        const target =
-            projectile.target;
-
-
-        if (
-            target &&
-            target.alive
-        ) {
-
-            this.gameHit(
-                target,
-                projectile.damage
-            );
-
-        }
-
-
-        this.createImpactEffect(
-            projectile.mesh.position
-        );
-
-
-        this.destroyProjectile(
-            projectile
-        );
-
+      return;
     }
 
+    projectile.elapsed += delta;
 
-    // =====================================================
-    // DAMAGE
-    // =====================================================
+    const progress =
+      Math.min(
+        projectile.elapsed /
+          projectile.duration,
+        1
+      );
 
-    gameHit(
+    const target =
+      projectile.target.mesh.position;
+
+    const position =
+      projectile.start.clone().lerp(
+        target,
+        progress
+      );
+
+    position.y +=
+      Math.sin(
+        progress * Math.PI
+      ) *
+      projectile.arc;
+
+    projectile.mesh.position.copy(
+      position
+    );
+
+    // Rotate projectile toward travel direction
+    const nextProgress =
+      Math.min(
+        progress + 0.03,
+        1
+      );
+
+    const nextPosition =
+      projectile.start.clone().lerp(
+        target,
+        nextProgress
+      );
+
+    nextPosition.y +=
+      Math.sin(
+        nextProgress * Math.PI
+      ) *
+      projectile.arc;
+
+    projectile.mesh.lookAt(
+      nextPosition
+    );
+
+    if (progress >= 1) {
+      this.impact(projectile);
+    }
+  }
+
+  // =========================================================
+  // IMPACT
+  // =========================================================
+
+  impact(projectile) {
+    const target =
+      projectile.target;
+
+    if (
+      target &&
+      target.alive
+    ) {
+      this.game.damageEnemy(
+        target,
+        projectile.damage
+      );
+
+      if (target.mesh) {
+        this.createImpactEffect(
+          target.mesh.position
+        );
+      }
+    }
+
+    this.destroyProjectile(
+      projectile
+    );
+  }
+
+  // =========================================================
+  // IMPACT FX
+  // =========================================================
+
+  createImpactEffect(position) {
+    const ring =
+      new THREE.Mesh(
+        new THREE.TorusGeometry(
+          0.12,
+          0.035,
+          6,
+          16
+        ),
+        new THREE.MeshBasicMaterial({
+          transparent: true,
+          opacity: 1
+        })
+      );
+
+    ring.position.copy(position);
+
+    ring.position.y += 0.9;
+
+    this.scene.add(ring);
+
+    let elapsed = 0;
+
+    const animate = () => {
+      elapsed += 0.03;
+
+      ring.scale.setScalar(
+        1 + elapsed * 5
+      );
+
+      ring.material.opacity =
+        Math.max(
+          0,
+          1 - elapsed * 2.5
+        );
+
+      if (
+        elapsed < 0.4 &&
+        ring.parent
+      ) {
+        requestAnimationFrame(
+          animate
+        );
+      } else if (ring.parent) {
+        ring.parent.remove(ring);
+      }
+    };
+
+    animate();
+  }
+
+  // =========================================================
+  // FIRE RAIN
+  // =========================================================
+
+  fireRain(damage) {
+    const enemies =
+      this.units.enemies.filter(
+        enemy => enemy.alive
+      );
+
+    for (const enemy of enemies) {
+      this.game.damageEnemy(
         enemy,
         damage
-    ) {
+      );
 
-        enemy.hp -=
-            damage;
-
-
-        this.game.ui.damageNumber(
-            damage,
-            enemy.mesh
+      if (enemy.mesh) {
+        this.createImpactEffect(
+          enemy.mesh.position
         );
-
-
-        if (
-            enemy.hp <= 0
-        ) {
-
-            enemy.alive =
-                false;
-
-
-            this.game.kills++;
-
-
-            const reward =
-                enemy.type === "commander"
-                    ? 250
-                    : enemy.type === "janissary"
-                        ? 45
-                        : enemy.type === "archer"
-                            ? 30
-                            : 20;
-
-
-            this.game.gold +=
-                reward;
-
-
-            this.game.score +=
-                reward * 10;
-
-
-            this.units.removeEnemy(
-                enemy
-            );
-
-
-            this.game.checkWaveClear();
-
-
-            this.game.updateUI();
-
-        }
-
+      }
     }
 
+    this.world.shake(0.45);
+  }
 
-    // =====================================================
-    // IMPACT EFFECT
-    // =====================================================
+  // =========================================================
+  // CLEANUP
+  // =========================================================
 
-    createImpactEffect(
-        position
+  destroyProjectile(
+    projectile
+  ) {
+    if (
+      projectile.mesh?.parent
     ) {
-
-        const geometry =
-            new THREE.SphereGeometry(
-                0.08,
-                8,
-                8
-            );
-
-
-        const material =
-            new THREE.MeshBasicMaterial({
-                color: 0xffb45c,
-                transparent: true,
-                opacity: 1
-            });
-
-
-        const flash =
-            new THREE.Mesh(
-                geometry,
-                material
-            );
-
-
-        flash.position.copy(
-            position
-        );
-
-
-        this.world.scene.add(
-            flash
-        );
-
-
-        let time = 0;
-
-
-        const animate =
-            () => {
-
-                time += 0.05;
-
-
-                flash.scale.setScalar(
-                    1 +
-                    time * 8
-                );
-
-
-                material.opacity =
-                    Math.max(
-                        0,
-                        1 - time * 2
-                    );
-
-
-                if (
-                    material.opacity <= 0
-                ) {
-
-                    this.world.scene.remove(
-                        flash
-                    );
-
-                    return;
-
-                }
-
-
-                requestAnimationFrame(
-                    animate
-                );
-
-            };
-
-
-        animate();
-
+      projectile.mesh.parent.remove(
+        projectile.mesh
+      );
     }
 
-
-    // =====================================================
-    // DESTROY
-    // =====================================================
-
-    destroyProjectile(
+    const index =
+      this.projectiles.indexOf(
         projectile
+      );
+
+    if (index !== -1) {
+      this.projectiles.splice(
+        index,
+        1
+      );
+    }
+  }
+
+  clear() {
+    for (
+      const projectile
+      of this.projectiles
     ) {
-
-        projectile.active =
-            false;
-
-
-        if (
-            projectile.mesh
-        ) {
-
-            this.world.scene.remove(
-                projectile.mesh
-            );
-
-        }
-
+      if (
+        projectile.mesh?.parent
+      ) {
+        projectile.mesh.parent.remove(
+          projectile.mesh
+        );
+      }
     }
 
-
-    // =====================================================
-    // FIRE RAIN
-    // =====================================================
-
-    fireRain(
-        damage = 150
-    ) {
-
-        const enemies =
-            this.units.enemies
-                .filter(
-                    enemy =>
-                        enemy.alive
-                );
-
-
-        enemies.forEach(
-            enemy => {
-
-                this.gameHit(
-                    enemy,
-                    damage
-                );
-
-            }
-        );
-
-
-        this.world.shake(
-            1
-        );
-
-    }
-
+    this.projectiles.length = 0;
+  }
 }
